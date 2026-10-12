@@ -1,0 +1,34 @@
+name: rust-notes-api
+# Local development: Postgres + the API.
+#   docker compose up -d db     -> just the database (then `cargo run`)
+#   docker compose up --build   -> database + API in containers
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: notes
+      POSTGRES_PASSWORD: notes
+      POSTGRES_DB: notes_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notes -d notes_db"]
+      interval: 2s
+      retries: 30
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://notes:notes@db:5432/notes_db
+      JWT_SECRET: local-dev-only-secret-change-me
+      RUST_LOG: notes_api=debug,tower_http=info
+    ports:
+      - "8810:8800" # your Mac:container (8800 was taken on this machine)
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
